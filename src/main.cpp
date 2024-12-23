@@ -3,6 +3,7 @@
 
 #include "parser.hpp"
 #include "ast.hpp"
+#include "interpreter.hpp" 
 
 int main(int argc, char** argv) {
     if(argc != 2) {
@@ -18,9 +19,10 @@ int main(int argc, char** argv) {
     std::string input = buffer.str();
     f.close();
 
-    std::cout << "Parsing program `" << argv[1] << "`..." << std::endl;
-    AbstractInterpreterParser AIParser;
-    ASTNode ast = AIParser.parse(input);
-    ast.print();
+    AbstractInterpreter<int> AI(input);
+    // AI.print();
+    std::cout << "Analyzing program `" << argv[1] << "`..." << std::endl;
+    AI.run();
+    std::cout << "respects all preconditions and postconditions." << std::endl;
     return 0;
 }
