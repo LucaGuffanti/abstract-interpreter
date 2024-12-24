@@ -116,6 +116,22 @@ public:
             return Interval<T>(new_lb, new_ub);
         }
     }
+
+    Interval<T> normalize() const
+    {
+        return Interval<T>(std::min(m_lb, m_ub), std::max(m_lb, m_ub));
+    }
+
+    bool contains(Interval<T>& other) const
+    {
+        return m_lb <= other.lb() && m_ub >= other.ub();
+    }
+
+    bool contains(T& value) const
+    {
+        return m_lb <= value && m_ub >= value;
+    }
+    
 };
 
 #endif // INTERVAL_HPP

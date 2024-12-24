@@ -12,9 +12,9 @@ void main() {
       a = 2;
     }
     else {
-      
+      a = 4;
     }
   }
-  assert(a <= 10);
+  assert(a <= 4);
   assert(a >= 0);
 }

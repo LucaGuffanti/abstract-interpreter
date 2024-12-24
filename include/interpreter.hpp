@@ -388,74 +388,114 @@ private:
         }
 
         std::cout << "Looking at if body " << std::endl;
-        auto [left_store, changed_var] = evaluate_logic_expression(condition.children[0], m_interval_store);
-        std::cout << changed_var << " limited to [" << left_store.get(changed_var).lb() << "," << left_store.get(changed_var).ub() << "]" << std::endl;
+        auto [if_body_interval, changed_var] = evaluate_logic_expression(condition.children[0]);
 
-
+        auto original_interval = m_interval_store.get(changed_var);
         auto original_store = IntervalStore<T>(m_interval_store);
-        std::cout << "original store " << changed_var << " [" << original_store.get(changed_var).lb() << "," << original_store.get(changed_var).ub() << "]" << std::endl;
-        m_interval_store = left_store;
 
-        for (const auto& child : if_body.children)
+
+        bool body_admitted = true;
+        if (original_interval.contains(if_body_interval))
         {
-            eval(child);
+            std::cout << "Condition is respected for " << changed_var << " [" << if_body_interval.lb() << "," << if_body_interval.ub() << "]" << std::endl;
+            m_interval_store.get(changed_var) = if_body_interval;
+
+            for (const auto& child : if_body.children)
+            {
+                eval(child);
+            }
+        } 
+        else {
+            body_admitted = false;
+            std::cout << "Condition is not respected for " << changed_var << " [" << if_body_interval.lb() << "," << if_body_interval.ub() << "]" << std::endl;
         }
 
-        std::cout << "The interval of " << changed_var << " is now [" << m_interval_store.get(changed_var).lb() << "," << m_interval_store.get(changed_var).ub() << "]" << std::endl;
-        left_store = IntervalStore<T>(m_interval_store);
+        auto if_body_store = IntervalStore<T>(m_interval_store);
         m_interval_store = original_store;
+
+        std::cout << "Continuing. Looking at possible else case" << std::endl;
 
         if (node.children.size() == 3)
         {
+            bool left_admitted = true;
+            bool right_admitted = true;
+
             auto else_body = node.children[2];
             // Build the complementary interval of the condition of the if body
-            auto right_store_lower = IntervalStore<T>(left_store);
-            auto right_store_upper = IntervalStore<T>(left_store);
 
-            right_store_lower.get(changed_var).ub() = std::max(left_store.get(changed_var).lb() - 1, original_store.get(changed_var).lb());
-            right_store_lower.get(changed_var).lb() = original_store.get(changed_var).lb();
+            auto left_interval = Interval<T>(original_interval.lb(), if_body_interval.lb() - 1).normalize();
+            auto right_interval = Interval<T>(if_body_interval.ub() + 1, original_interval.ub()).normalize();
 
-            right_store_upper.get(changed_var).lb() = std::min(left_store.get(changed_var).ub() + 1, original_store.get(changed_var).ub());
-            right_store_upper.get(changed_var).ub() = original_store.get(changed_var).ub();
+            std::cout << "Left interval for "<< changed_var<<" [" << left_interval.lb() << ", " << left_interval.ub() << "]" << std::endl;
+            std::cout << "Right interval for"<< changed_var<<" [" << right_interval.lb() << ", " << right_interval.ub() << "]" << std::endl;
+            
+            auto left_store = IntervalStore<T>(m_interval_store);
+            auto right_store = IntervalStore<T>(m_interval_store);
 
-            std::cout << "Evaluating else body with interval [" << right_store_lower.get(changed_var).lb() << "," << right_store_lower.get(changed_var).ub() << "]" << std::endl;
-            m_interval_store = right_store_lower;
-            for (const auto& child : else_body.children)
+            // Evaluate the case for the left interval if it's in the original
+            if (original_interval.contains(left_interval))
             {
-                eval(child);
+                m_interval_store.get(changed_var) = left_interval;
+                for (const auto& child : else_body.children)
+                {
+                    eval(child);
+                }
+                left_store = IntervalStore<T>(m_interval_store);
+            }
+            else
+            {
+                left_admitted = false;
+                std::cout << "Left interval not admitted [" << left_interval.lb() << ", " << left_interval.ub() << "] not in [" << original_interval.lb() << ", " << original_interval.ub() << "]" << std::endl;
             }
 
-            right_store_lower = IntervalStore<T>(m_interval_store);
-
-            std::cout << "Evaluating else body with interval [" << right_store_upper.get(changed_var).lb() << "," << right_store_upper.get(changed_var).ub() << "]" << std::endl;
-            m_interval_store = IntervalStore<T>(right_store_upper);
-            for (const auto& child : else_body.children)
+            if (original_interval.contains(right_interval))
             {
-                eval(child);
+                m_interval_store.get(changed_var) = right_interval;
+                for (const auto& child : else_body.children)
+                {
+                    eval(child);
+                }
+                right_store = IntervalStore<T>(m_interval_store);
             }
-            right_store_upper = IntervalStore<T>(m_interval_store);
+            else
+            {
+                right_admitted = false;
+                std::cout << "Right interval not admitted [" << right_interval.lb() << ", " << right_interval.ub() << "] not in [" << original_interval.lb() << ", " << original_interval.ub() << "]" << std::endl;
+            }
 
-            // Now join the two stores
-            std::cout << "Right store lower has interval for " << changed_var << " [" << right_store_lower.get(changed_var).lb() << "," << right_store_lower.get(changed_var).ub() << "]" << std::endl;
-            std::cout << "Right store upper has interval for " << changed_var << " [" << right_store_upper.get(changed_var).lb() << "," << right_store_upper.get(changed_var).ub() << "]" << std::endl;
-            right_store_lower.joinAll(right_store_upper);
-            std::cout << "Joined interval [" << right_store_lower.get(changed_var).lb() << "," << right_store_lower.get(changed_var).ub() << "]" << std::endl;
-
-            // Now join the two stores
-
-            std::cout << "Interval for left store " << changed_var << " [" << left_store.get(changed_var).lb() << "," << left_store.get(changed_var).ub() << "]" << std::endl;
-            left_store.joinAll(right_store_lower);
+            if (left_admitted && right_admitted)
+            {
+                right_store.joinAll(left_store);
+                m_interval_store = right_store;
+            }
+            else if (left_admitted)
+            {
+                m_interval_store = left_store;
+            }
+            else if (right_admitted)
+            {
+                m_interval_store = right_store;
+            }
+            else
+            {
+                std::cerr << "No case admitted" << std::endl;
+                exit(1);
+            }
         } else {
-            left_store.get(changed_var).join(original_store.get(changed_var));
+            std::cout << "No else case" << std::endl;
         }
 
-        m_interval_store = left_store;
-        std::cout << "Joined interval [" << m_interval_store.get(changed_var).lb() << "," << m_interval_store.get(changed_var).ub() << "]" << std::endl;
+        if (body_admitted)
+        {
+            m_interval_store.joinAll(if_body_store);
+        }
+
+        m_interval_store.print();
 
         return true;
     }
 
-    std::pair<IntervalStore<T>, std::string> evaluate_logic_expression(const ASTNode& node, IntervalStore<T> store)
+    std::pair<Interval<T>, std::string> evaluate_logic_expression(const ASTNode& node)
     {
         // access the left and right sons of the logic operation
         node.print();
@@ -479,24 +519,7 @@ private:
             exit(1);
         }        
 
-        switch(op)
-        {
-            case LogicOp::EQ:
-            {
-                std::cout << "AAAAAAAAAAAA" << std::endl;
-                store.get(var).lb() = res.lb();
-                store.get(var).ub() = res.ub();
-                break;
-            }
-            default:
-            {
-                std::cerr << "Only equality is supported in if else statements" << std::endl;
-                exit(1);
-            }
-        }
-
-
-        return {store, var};
+        return {res, var};
     }
 
     Interval<T> evaluate_expression(const ASTNode& node)

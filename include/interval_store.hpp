@@ -57,6 +57,14 @@ public:
         return this->m_store;
     }
 
+    void print()
+    {
+        for (auto& [key, interval] : m_store)
+        {
+            std::cout << key << ": [" << interval.lb() << ", " << interval.ub() << "]" << std::endl;
+        }
+    }
+
     // TODO: add functions to execute operations on intervals if needed
 };
 #endif // INTERVAL_STORE_HPP
