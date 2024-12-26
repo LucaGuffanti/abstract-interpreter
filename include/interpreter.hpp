@@ -8,7 +8,7 @@
 #include "parser.hpp"
 #include "interval_store.hpp"
 
-template <typename T > requires std::is_arithmetic_v<T>
+template <typename T> requires std::is_arithmetic_v<T>
 class AbstractInterpreter
 {
 private:
@@ -26,7 +26,7 @@ private:
     const T max_T = std::numeric_limits<T>::max();
 
     ASTNode m_ast;
-    IntervalStore<int> m_interval_store;
+    IntervalStore<T> m_interval_store;
 public:
     AbstractInterpreter() = default;
     ~AbstractInterpreter() = default;

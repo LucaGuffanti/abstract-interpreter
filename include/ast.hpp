@@ -49,7 +49,7 @@ std::ostream& operator<<(std::ostream& os, NodeType type) {
 }
 
 struct ASTNode {
-    using VType = std::variant<std::string, int, BinOp, LogicOp>;
+    using VType = std::variant<std::string, int64_t, BinOp, LogicOp>;
     using ASTNodes = std::vector<ASTNode>;
 
     NodeType type;
@@ -58,7 +58,7 @@ struct ASTNode {
 
     ASTNode(): type(NodeType::INTEGER), value(0) {}
     ASTNode(const std::string& name): type(NodeType::VARIABLE), value(name){}
-    ASTNode(const int num): type(NodeType::INTEGER), value(num) {}
+    ASTNode(const int64_t num): type(NodeType::INTEGER), value(num) {}
     ASTNode(BinOp bop, ASTNode left, ASTNode right)
         : type(NodeType::ARITHM_OP), value(bop){
             children.push_back(left);
@@ -73,7 +73,7 @@ struct ASTNode {
     ASTNode(NodeType t, const std::string& name): type(t), value(name){}
     ASTNode(NodeType t, const VType& value): type(t), value(value) {}
 
-    static void printVariant(const std::variant<std::string, int, BinOp, LogicOp>& value) {
+    static void printVariant(const std::variant<std::string, int64_t, BinOp, LogicOp>& value) {
         std::visit([](const auto& v) {
             std::cout << v << std::endl;
         }, value);

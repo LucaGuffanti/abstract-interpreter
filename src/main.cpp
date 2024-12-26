@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
     std::string input = buffer.str();
     f.close();
 
-    AbstractInterpreter<int> AI(input);
+    AbstractInterpreter<int64_t> AI(input);
     // AI.print();
     std::cout << "Analyzing program `" << argv[1] << "`..." << std::endl;
     AI.run();

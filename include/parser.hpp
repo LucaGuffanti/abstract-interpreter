@@ -45,7 +45,7 @@ public:
 
         // // setup actions
         parser["Program"] = [this](const SV& sv){return make_program(sv);};
-        parser["Integer"] = [](const SV& sv){return ASTNode(sv.token_to_number<int>());};
+        parser["Integer"] = [](const SV& sv){return ASTNode(sv.token_to_number<int64_t>());};
         parser["Identifier"] = [](const SV& sv){return ASTNode(sv.token_to_string());};
         parser["SeqOp"] = [this](const SV& sv){return make_seq_op(sv);};
         parser["PreOp"] = [this](const SV& sv){return make_pre_op(sv);};
