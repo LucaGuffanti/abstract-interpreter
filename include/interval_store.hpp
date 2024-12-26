@@ -65,6 +65,5 @@ public:
         }
     }
 
-    // TODO: add functions to execute operations on intervals if needed
 };
 #endif // INTERVAL_STORE_HPP

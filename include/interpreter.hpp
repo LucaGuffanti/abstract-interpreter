@@ -22,11 +22,13 @@ private:
         {">", LogicOp::GE}
     };
 
+    const T null_T = static_cast<T>(0);
     const T min_T = std::numeric_limits<T>::min();
     const T max_T = std::numeric_limits<T>::max();
 
     ASTNode m_ast;
     IntervalStore<T> m_interval_store;
+    IntervalStore<T> m_precondition_store;
 public:
     AbstractInterpreter() = default;
     ~AbstractInterpreter() = default;
@@ -79,7 +81,7 @@ private:
             }
             case NodeType::PRE_CON:
             {
-                node.print();
+                // node.print();
                 bool res = true;
                 for (const auto& child : node.children)
                 {
@@ -119,6 +121,7 @@ private:
         #endif
         
         m_interval_store.set(var_name, {min_T, max_T});
+        m_precondition_store.set(var_name, {min_T, max_T});
 
         #ifdef DEBUG
         auto interval = m_interval_store.get(var_name);
@@ -172,6 +175,7 @@ private:
                 if (variable_on_left)
                 {
                     m_interval_store.get(var).ub() = val;
+                    m_precondition_store.get(var).ub() = val;
                     #ifdef DEBUG
                     std::cout << "Reduced upper bound of " << var << " to " << val << std::endl;
                     #endif
@@ -179,6 +183,7 @@ private:
                 else
                 {
                     m_interval_store.get(var).lb() = val;
+                    m_precondition_store.get(var).lb() = val;
                     #ifdef DEBUG
                     std::cout << "Reduced lower bound of " << var << " to " << val << std::endl;
                     #endif
@@ -191,6 +196,7 @@ private:
                 if (variable_on_left)
                 {
                     m_interval_store.get(var).lb() = val;
+                    m_precondition_store.get(var).lb() = val;
                     #ifdef DEBUG
                     std::cout << "Reduced lower bound of " << var << " to " << val << std::endl;
                     #endif
@@ -198,6 +204,7 @@ private:
                 else
                 {
                     m_interval_store.get(var).ub() = val;
+                    m_precondition_store.get(var).ub() = val;
                     #ifdef DEBUG
                     std::cout << "Reduced upper bound of " << var << " to " << val << std::endl;
                     #endif
@@ -213,7 +220,9 @@ private:
 
         #ifdef DEBUG
         auto interval = m_interval_store.get(var);
+
         std::cout << "Interval of variable " << var <<" : [" << interval.lb() << ", " << interval.ub() << "]" << std::endl;
+        std::cout << "Precondition of variable " << var <<" : [" << m_precondition_store.get(var).lb() << ", " << m_precondition_store.get(var).ub() << "]" << std::endl;
         #endif
         return true;
     }
@@ -229,16 +238,18 @@ private:
         auto expr = node.children[1];
 
         auto result = evaluate_expression(expr);
+        if (respects_precondition(var, result))
+        {
+            #ifdef DEBUG
+            std::cout << "Assignment respects precondition" << std::endl;
+            #endif
+        }
+        else
+        {
+            std::cerr << "Assignment does not respect precondition for " << var << std::endl;
+
+        }
         m_interval_store.get(var) = result;
-        // if (respects_precondition(var, result))
-        // {
-        //     m_interval_store.get(var) = result;
-        // }
-        // else
-        // {
-        //     std::cerr << "Assignment does not respect precondition" << std::endl;
-        //     return false;
-        // }
 
         #ifdef DEBUG
         std::cout << "Interval of variable " << var <<" : [" << m_interval_store.get(var).lb() << ", " << m_interval_store.get(var).ub() << "]" << std::endl;
@@ -248,7 +259,14 @@ private:
 
     bool respects_precondition(const std::string& var, Interval<T>& interval)
     {
-        return interval.lb() >= m_interval_store.get(var).lb() && interval.ub() <= m_interval_store.get(var).ub();
+
+        #ifdef DEBUG
+        std::cout << "Checking if assignment respects precondition" << std::endl;
+        std::cout << "Variable: " << var << std::endl;
+        std::cout << "Interval: [" << interval.lb() << ", " << interval.ub() << "]" << std::endl;
+        std::cout << "Precondition: [" << m_precondition_store.get(var).lb() << ", " << m_precondition_store.get(var).ub() << "]" << std::endl;
+        #endif
+        return interval.lb() >= m_precondition_store.get(var).lb() && interval.ub() <= m_precondition_store.get(var).ub();
     }
 
     bool evaluate_postcondition(const ASTNode& node)
@@ -281,7 +299,6 @@ private:
                 else
                 {
                     std::cerr << "Postcondition not satisfied" << std::endl;
-                    exit(1);
                 }
                 break;
             }
@@ -296,7 +313,6 @@ private:
                 else
                 {
                     std::cerr << "Postcondition not satisfied" << std::endl;
-                    exit(1);
                 }
                 break;
             }
@@ -311,7 +327,6 @@ private:
                 else
                 {
                     std::cerr << "Postcondition not satisfied" << std::endl;
-                    exit(1);
                 }
                 break;
             }
@@ -326,7 +341,6 @@ private:
                 else
                 {
                     std::cerr << "Postcondition not satisfied" << std::endl;
-                    exit(1);
                 }
                 break;
             }
@@ -341,7 +355,6 @@ private:
                 else
                 {
                     std::cerr << "Postcondition not satisfied" << std::endl;
-                    exit(1);
                 }
                 break;
             }
@@ -363,7 +376,6 @@ private:
             default:
             {
                 std::cerr << "Unknown logic operation" << op << std::endl;
-                exit(1);
             }
         }
         return true;
@@ -380,14 +392,15 @@ private:
         auto if_body = node.children[1]; 
         
         auto op = std::get<LogicOp>(condition.children[0].value);
+        #ifdef DEBUG
         std::cout << "operation " << op << std::endl;
+        #endif
 
         if (op != LogicOp::EQ) {
             std::cerr << "Only equality is supported in if else statements" << std::endl;
             exit(1);
         }
 
-        std::cout << "Looking at if body " << std::endl;
         auto [if_body_interval, changed_var] = evaluate_logic_expression(condition.children[0]);
 
         auto original_interval = m_interval_store.get(changed_var);
@@ -397,7 +410,10 @@ private:
         bool body_admitted = true;
         if (original_interval.contains(if_body_interval))
         {
+            #ifdef DEBUG
             std::cout << "Condition is respected for " << changed_var << " [" << if_body_interval.lb() << "," << if_body_interval.ub() << "]" << std::endl;
+            #endif
+
             m_interval_store.get(changed_var) = if_body_interval;
 
             for (const auto& child : if_body.children)
@@ -407,13 +423,17 @@ private:
         } 
         else {
             body_admitted = false;
+            #ifdef DEBUG
             std::cout << "Condition is not respected for " << changed_var << " [" << if_body_interval.lb() << "," << if_body_interval.ub() << "]" << std::endl;
+            #endif
         }
 
         auto if_body_store = IntervalStore<T>(m_interval_store);
         m_interval_store = original_store;
 
+        #ifdef DEBUG
         std::cout << "Continuing. Looking at possible else case" << std::endl;
+        #endif
 
         if (node.children.size() == 3)
         {
@@ -423,12 +443,20 @@ private:
             auto else_body = node.children[2];
             // Build the complementary interval of the condition of the if body
 
+            if (if_body_interval.lb() == min_T || if_body_interval.ub() == max_T)
+            {
+                std::cerr << "Overflow Encountered in evaluating if statement" << std::endl;
+            }
+
             auto left_interval = Interval<T>(original_interval.lb(), if_body_interval.lb() - 1).normalize();
             auto right_interval = Interval<T>(if_body_interval.ub() + 1, original_interval.ub()).normalize();
 
+
+            #ifdef DEBUG
             std::cout << "Left interval for "<< changed_var<<" [" << left_interval.lb() << ", " << left_interval.ub() << "]" << std::endl;
             std::cout << "Right interval for"<< changed_var<<" [" << right_interval.lb() << ", " << right_interval.ub() << "]" << std::endl;
-            
+            #endif
+
             auto left_store = IntervalStore<T>(m_interval_store);
             auto right_store = IntervalStore<T>(m_interval_store);
 
@@ -445,7 +473,9 @@ private:
             else
             {
                 left_admitted = false;
+                #ifdef DEBUG
                 std::cout << "Left interval not admitted [" << left_interval.lb() << ", " << left_interval.ub() << "] not in [" << original_interval.lb() << ", " << original_interval.ub() << "]" << std::endl;
+                #endif
             }
 
             if (original_interval.contains(right_interval))
@@ -460,7 +490,9 @@ private:
             else
             {
                 right_admitted = false;
+                #ifdef DEBUG
                 std::cout << "Right interval not admitted [" << right_interval.lb() << ", " << right_interval.ub() << "] not in [" << original_interval.lb() << ", " << original_interval.ub() << "]" << std::endl;
+                #endif
             }
 
             if (left_admitted && right_admitted)
@@ -490,7 +522,9 @@ private:
             m_interval_store.joinAll(if_body_store);
         }
 
+        #ifdef DEBUG
         m_interval_store.print();
+        #endif
 
         return true;
     }
@@ -498,12 +532,12 @@ private:
     std::pair<Interval<T>, std::string> evaluate_logic_expression(const ASTNode& node)
     {
         // access the left and right sons of the logic operation
-        node.print();
+        //node.print();
         auto left_expr = node.children[0];
         auto right_expr = node.children[1];
         auto op = std::get<LogicOp>(node.value);
         
-        left_expr.print();
+        //left_expr.print();
 
         if (left_expr.type != NodeType::VARIABLE)
         {
@@ -554,6 +588,10 @@ private:
                 }
                 case BinOp::DIV:
                 {
+                    if (right.contains(null_T))
+                    {
+                        std::cerr << "!WARNING!: DIVISION BY ZERO" << std::endl;
+                    }
                     return left / right;
                 }
                 default:

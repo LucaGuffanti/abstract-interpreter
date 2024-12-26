@@ -1,11 +1,16 @@
 #ifndef INTERVAL_HPP
 #define INTERVAL_HPP
 
+#include <limits>
+
 template <typename T>
 class Interval{
 private:
     T m_lb;
     T m_ub;
+
+    static const T min_T = std::numeric_limits<T>::min();
+    static const T max_T = std::numeric_limits<T>::max();
 
 public: 
     // Default constructor
@@ -77,22 +82,39 @@ public:
 
     Interval<T> operator+(Interval<T>& other) const
     {
+        if (m_lb > max_T - other.ub() || m_ub > max_T - other.lb())
+        {
+            std::cerr << "Overflow Encountered in evaluating addition" << std::endl;
+        }
         return Interval<T>(m_lb + other.lb(), m_ub +  other.ub());
     }
 
     Interval<T> operator-(Interval<T>& other) const
     {
+        if (m_lb < min_T + other.ub() || m_ub < min_T + other.lb())
+        {
+            std::cerr << "Overflow Encountered in evaluating subtraction" << std::endl;
+        }
         return Interval<T>(m_lb - other.ub(), m_ub - other.lb());
     }
 
     Interval<T> operator-() const 
     {
+        if (m_lb == min_T)
+        {
+            std::cerr << "Overflow Encountered in evaluating negation" << std::endl;
+        }
         return Interval<T>(-m_ub, -m_lb);
     }
 
     Interval<T> operator*(Interval<T>& other) const
     {
         
+        if (m_lb > max_T / other.ub() || m_ub > max_T / other.lb())
+        {
+            std::cerr << "Overflow Encountered in evaluating multiplication" << std::endl;
+        }
+
         T other_lb = other.lb();
         T other_ub = other.ub();
         T new_lb = std::min({m_lb * other_lb, m_lb * other_ub, m_ub * other_lb, m_ub * other_ub});
@@ -103,6 +125,7 @@ public:
 
     Interval<T> operator/(Interval<T>& other) const
     {
+
         T other_lb = other.lb();
         T other_ub = other.ub();
         if (other_lb <= 0 && other_ub >= 0)
@@ -127,11 +150,11 @@ public:
         return m_lb <= other.lb() && m_ub >= other.ub();
     }
 
-    bool contains(T& value) const
+    bool contains(const T& value) const
     {
         return m_lb <= value && m_ub >= value;
     }
-    
+
 };
 
 #endif // INTERVAL_HPP

@@ -67,7 +67,7 @@ public:
 
         ASTNode root;
         if (parser.parse(input.c_str(), root)){
-            std::cout << "Parsing succeeded!" << std::endl;
+            // std::cout << "Parsing succeeded!" << std::endl;
         }else{
             std::cerr << "Parsing failed!" << std::endl;
         }   

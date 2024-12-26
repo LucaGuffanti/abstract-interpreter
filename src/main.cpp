@@ -4,6 +4,7 @@
 #include "parser.hpp"
 #include "ast.hpp"
 #include "interpreter.hpp" 
+#include "equational_interpreter.hpp"
 
 int main(int argc, char** argv) {
     if(argc != 2) {
@@ -23,6 +24,9 @@ int main(int argc, char** argv) {
     // AI.print();
     std::cout << "Analyzing program `" << argv[1] << "`..." << std::endl;
     AI.run();
-    std::cout << "respects all preconditions and postconditions." << std::endl;
+
+    // EquationalInterpreter<int64_t> EI(input);
+    // // EI.print();
+    // EI.run();
     return 0;
 }
