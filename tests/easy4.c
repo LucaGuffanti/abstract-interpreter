@@ -1,4 +1,4 @@
-int a;
+int a,c;
 int b;
 
 void main() {

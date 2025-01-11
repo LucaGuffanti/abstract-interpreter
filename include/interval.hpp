@@ -8,6 +8,7 @@ class Interval{
 private:
     T m_lb;
     T m_ub;
+    bool m_is_empty = false;
 
     static const T min_T = std::numeric_limits<T>::min();
     static const T max_T = std::numeric_limits<T>::max();
@@ -155,6 +156,15 @@ public:
         return m_lb <= value && m_ub >= value;
     }
 
+    void print() const
+    {
+        std::cout << "[" << m_lb << ", " << m_ub << "]" << std::endl;
+    }
+
+    bool& is_empty() 
+    {
+        return m_is_empty;
+    }
 };
 
 #endif // INTERVAL_HPP

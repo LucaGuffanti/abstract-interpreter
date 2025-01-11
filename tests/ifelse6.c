@@ -11,7 +11,10 @@ void main() {
     if(b == 1) {
       a = 2;
     }
+    else {
+      a = 1;
+    }
   }
-  assert(a <= 10);
-  assert(a >= 0);
+  assert(a <= 2);
+  assert(a >= 1);
 }
