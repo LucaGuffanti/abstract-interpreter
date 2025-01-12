@@ -1,10 +1,8 @@
 int a,b;
 
 void main(){
-    a = 0;
-    b = a;
-    while(a < 10){
-        b = b + 1;
-        a = b;
+    a = 1;
+    while(a <= 10){
+        a = a + 2;
     }
 }

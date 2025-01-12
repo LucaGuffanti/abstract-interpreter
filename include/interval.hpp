@@ -6,14 +6,15 @@
 template <typename T>
 class Interval{
 private:
-    T m_lb;
-    T m_ub;
-    bool m_is_empty = false;
+
 
     static const T min_T = std::numeric_limits<T>::min();
     static const T max_T = std::numeric_limits<T>::max();
 
 public: 
+    bool m_is_empty = false;
+    T m_lb;
+    T m_ub;
     // Default constructor
     Interval():
     m_lb(0),
@@ -47,21 +48,81 @@ public:
     // Join operation - Union of the two intervals
     void join(Interval<T>& other)
     {
+        if (m_is_empty && other.is_empty())
+        {
+            m_is_empty = true;
+            return;
+        }
+
+        if (m_is_empty)
+        {
+            m_lb = other.lb();
+            m_ub = other.ub();
+            m_is_empty = false;
+            return;
+        }
+
+        if (other.is_empty())
+        {
+            return;
+        }
+
         m_lb = std::min(m_lb, other.lb());
         m_ub = std::max(m_ub, other.ub());
+
+        if (m_lb > m_ub)
+        {
+            m_is_empty = true;
+        }
     }
 
     // Meet operation - Intersection of the two intervals
     void meet(Interval<T>& other)
     {
+        if (m_is_empty || other.is_empty())
+        {
+            m_is_empty = true;
+            return;
+        }
+
         m_lb = std::max(m_lb, other.lb());
         m_ub = std::min(m_ub, other.ub());
+
+        if (m_lb > m_ub)
+        {
+            m_is_empty = true;
+        }
     }
 
     // Equality operator overloading to compare two intervals
     bool operator==(Interval<T>& other) const
     {
-        return m_lb == other.lb() && m_ub == other.ub();
+        if (m_is_empty && other.is_empty())
+        {
+            return true;
+        }
+
+        if (m_is_empty || other.is_empty())
+        {
+            return false;
+        }
+
+        return m_lb == other.m_lb && m_ub == other.ub();
+    }
+
+    bool operator==(const Interval<T>& other) const
+    {
+        if (m_is_empty && other.m_is_empty)
+        {
+            return true;
+        }
+
+        if (m_is_empty || other.m_is_empty)
+        {
+            return false;
+        }
+
+        return m_lb == other.m_lb && m_ub == other.m_ub;
     }
 
     // Less than operator overloading to compare two intervals. The less than operator
@@ -158,7 +219,14 @@ public:
 
     void print() const
     {
-        std::cout << "[" << m_lb << ", " << m_ub << "]" << std::endl;
+        if (m_is_empty)
+        {
+            std::cout << "Empty" << std::endl;
+        }
+        else
+        {
+            std::cout << "[" << m_lb << ", " << m_ub << "]" << std::endl;
+        }
     }
 
     bool& is_empty() 

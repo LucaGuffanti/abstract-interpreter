@@ -61,9 +61,20 @@ public:
     {
         for (auto& [key, interval] : m_store)
         {
-            std::cout << key << ": [" << interval.lb() << ", " << interval.ub() << "]" << std::endl;
+            if (interval.is_empty())
+            {
+                std::cout << key << ": Empty" << std::endl;
+            }
+            else
+            {
+                std::cout << key << ": [" << interval.lb() << ", " << interval.ub() << "]" << std::endl;
+            }
         }
     }
 
+    bool equals(IntervalStore<T>& other)
+    {
+        return m_store == other.store();
+    }
 };
 #endif // INTERVAL_STORE_HPP
