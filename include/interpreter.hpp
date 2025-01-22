@@ -8,6 +8,11 @@
 #include "parser.hpp"
 #include "interval_store.hpp"
 
+/**
+ * @brief The AbstractInterpreter class represents an abstract interpreter for the simple C language demo.
+ * 
+ * @tparam T 
+ */
 template <typename T> requires std::is_arithmetic_v<T>
 class AbstractInterpreter
 {
@@ -57,6 +62,12 @@ public:
     }
 
 private:
+
+    /**
+     * @brief Based on the current node that is encountered during the traversal, evaluates the semantics of the statements, acting on variables. 
+     * 
+     * @param node 
+     */
     bool eval(const ASTNode& node)
     {
         switch (node.type)
@@ -113,6 +124,13 @@ private:
         return true;
     }
 
+    /**
+     * @brief Evaluates the declaration of a variable adding it to the store
+     * 
+     * @param node 
+     * @return true 
+     * @return false 
+     */
     bool evaluate_variable_declaration(const ASTNode& node)
     {
         auto var_name = std::get<std::string>(node.value);
@@ -130,6 +148,13 @@ private:
         return true;
     }
 
+    /**
+     * @brief Evaluates the logic operation embedded into preconditions
+     * 
+     * @param node 
+     * @return true 
+     * @return false 
+     */
     bool evaluate_precondition_logic_operation(const ASTNode& node)
     {
         #ifdef DEBUG
@@ -227,6 +252,13 @@ private:
         return true;
     }
 
+    /**
+     * @brief Evaluates an assignment node, changing the interval associated to the chosen variable
+     * 
+     * @param node 
+     * @return true 
+     * @return false 
+     */
     bool evaluate_assignment(const ASTNode& node)
     {
         #ifdef DEBUG
@@ -238,17 +270,17 @@ private:
         auto expr = node.children[1];
 
         auto result = evaluate_expression(expr);
-        if (respects_precondition(var, result))
-        {
-            #ifdef DEBUG
-            std::cout << "Assignment respects precondition" << std::endl;
-            #endif
-        }
-        else
-        {
-            std::cerr << "Assignment does not respect precondition for " << var << std::endl;
+        // if (respects_precondition(var, result))
+        // {
+        //     #ifdef DEBUG
+        //     std::cout << "Assignment respects precondition" << std::endl;
+        //     #endif
+        // }
+        // else
+        // {
+        //     // std::cerr << "Assignment does not respect precondition for " << var << std::endl;
 
-        }
+        // }
         m_interval_store.get(var) = result;
 
         #ifdef DEBUG
@@ -257,18 +289,27 @@ private:
         return true;
     }
 
-    bool respects_precondition(const std::string& var, Interval<T>& interval)
-    {
+    // bool respects_precondition(const std::string& var, Interval<T>& interval)
+    // {
 
-        #ifdef DEBUG
-        std::cout << "Checking if assignment respects precondition" << std::endl;
-        std::cout << "Variable: " << var << std::endl;
-        std::cout << "Interval: [" << interval.lb() << ", " << interval.ub() << "]" << std::endl;
-        std::cout << "Precondition: [" << m_precondition_store.get(var).lb() << ", " << m_precondition_store.get(var).ub() << "]" << std::endl;
-        #endif
-        return interval.lb() >= m_precondition_store.get(var).lb() && interval.ub() <= m_precondition_store.get(var).ub();
-    }
+    //     #ifdef DEBUG
+    //     std::cout << "Checking if assignment respects precondition" << std::endl;
+    //     std::cout << "Variable: " << var << std::endl;
+    //     std::cout << "Interval: [" << interval.lb() << ", " << interval.ub() << "]" << std::endl;
+    //     std::cout << "Precondition: [" << m_precondition_store.get(var).lb() << ", " << m_precondition_store.get(var).ub() << "]" << std::endl;
+    //     #endif
+    //     return interval.lb() >= m_precondition_store.get(var).lb() && interval.ub() <= m_precondition_store.get(var).ub();
+    // }
 
+    /**
+     * @brief Evaluates a postcondition found in the AST by considering the node and its children. The postcondition
+     * is evaluated by comparing the left and right expressions with the logic operation, and checking if the generated 
+     * intervals respect the logic operation.
+     * 
+     * @param node 
+     * @return true 
+     * @return false 
+     */
     bool evaluate_postcondition(const ASTNode& node)
     {
         #ifdef DEBUG
@@ -381,6 +422,11 @@ private:
         return true;
     }
 
+    /**
+     * @brief Evaluates an if-else statement found in the AST by considering the node and its children.
+     * 
+     * @param node 
+     */
     bool evaluate_if_else(const ASTNode& node)
     {
         #ifdef DEBUG
@@ -529,6 +575,12 @@ private:
         return true;
     }
 
+    /**
+     * @brief Evaluates a logic expression in the AST by performing a depth traversal of the syntactic tree representing the expression.
+     * 
+     * @param node 
+     * @return std::pair<Interval<T>, std::string> 
+     */
     std::pair<Interval<T>, std::string> evaluate_logic_expression(const ASTNode& node)
     {
         // access the left and right sons of the logic operation
@@ -556,6 +608,13 @@ private:
         return {res, var};
     }
 
+    /**
+     * @brief Evaluates an expression in the AST by performing a depth traversal of the syntactic tree representing the expression, computing
+     * the resulting interval
+     * 
+     * @param node 
+     * @return Interval<T> 
+     */
     Interval<T> evaluate_expression(const ASTNode& node)
     {
         if (node.type == NodeType::INTEGER)

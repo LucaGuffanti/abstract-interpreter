@@ -20,13 +20,13 @@ int main(int argc, char** argv) {
     std::string input = buffer.str();
     f.close();
 
-    AbstractInterpreter<int64_t> AI(input);
-    // AI.print();
-    std::cout << "Analyzing program `" << argv[1] << "`..." << std::endl;
-    AI.run();
+    // AbstractInterpreter<int64_t> AI(input);
+    // // AI.print();
+    // std::cout << "Analyzing program `" << argv[1] << "`..." << std::endl;
+    // AI.run();
 
-    // EquationalInterpreter<int64_t> EI(input);
-    // // EI.print();
-    // EI.run();
+    EquationalInterpreter<int64_t> EI(input);
+    // EI.print();
+    EI.run();
     return 0;
 }

@@ -5,10 +5,15 @@
 #include "interval_store.hpp"
 #include "parser.hpp"
 
+
+/**
+ * @brief Represents a generic location in the abstract interpreter.
+ * 
+ * @tparam T 
+ */
 template <typename T>
 class Location
 {
-
 public:
     std::function<void(void)> m_operation;
     std::shared_ptr<Location<T>> m_fallback_location;
@@ -75,6 +80,16 @@ public:
     }
 };
 
+
+
+/**
+ * @brief Represents a specific type of location in the abstract interpreter that handles assignment operations.
+ * 
+ * This class inherits from the Location<T> class and provides additional functionality specific to assignment locations.
+ * It maintains two interval stores: one before the assignment and one after the assignment.
+ * 
+ * @tparam T The type of the elements stored in the interval stores.
+ */
 template <typename T>
 class AssignmentLocation : public Location<T>
 {
@@ -152,7 +167,11 @@ public:
     }
 };
 
-
+/**
+ * @brief Represents a specific type of location in the abstract interpreter that handles post-condition verification.
+ * 
+ * @tparam T The type of the elements stored in the interval stores.
+ */
 template <typename T>
 class PostConditionLocation : public Location<T>
 {
@@ -195,6 +214,11 @@ public:
     }
 };
 
+/**
+ * @brief Represents a specific type of location in the abstract interpreter that handles if-else statements.
+ * 
+ * @tparam T The type of the elements stored in the interval stores.
+ */
 template <typename T>
 class IfElseLocation : public Location<T>
 {
@@ -290,6 +314,12 @@ public:
     }
 };
 
+
+/**
+ * @brief Represents a specific type of location in the abstract interpreter that handles the end of an if statement.
+ * 
+ * @tparam T 
+ */
 template<typename T>
 class EndIfLocation : public Location<T>
 {
@@ -384,6 +414,11 @@ public:
     }
 };
 
+/**
+ * @brief Represents a specific type of location in the abstract interpreter that handles while statements.
+ * 
+ * @tparam T 
+ */
 template <typename T>
 class WhileLocation : public Location<T>
 {
@@ -467,6 +502,11 @@ public:
 
 };
 
+/**
+ * @brief Represents a specific type of location in the abstract interpreter that handles the end of a while statement.
+ * 
+ * @tparam T 
+ */
 template <typename T>
 class EndWhileLocation : public Location<T>
 {

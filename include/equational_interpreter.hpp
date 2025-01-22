@@ -19,6 +19,11 @@ enum LocationType {
     ENDWHILE
 };
 
+/**
+ * @brief Class that represents an equational interpreter for the simple C language demo.
+ * 
+ * @tparam T 
+ */
 template <typename T> requires std::is_arithmetic_v<T>
 class EquationalInterpreter
 {
@@ -58,6 +63,7 @@ private:
     std::queue<std::shared_ptr<IntervalStore<T>>> m_final_while_body_stores_queue;
 
     bool should_evaluate_postcondition = false;
+    bool should_perform_widening = false;
 public:
     EquationalInterpreter() = default;
     ~EquationalInterpreter() = default;
@@ -81,13 +87,19 @@ public:
         m_ast.print();
     }
 
+    /**
+     * @brief Executes the analysis of the program passed as input
+     * 
+     */
     void run()
     {
         std::size_t it_count = 0;
+        // First, build the equational system
         build_equational_system();
 
         print_equational_system();
 
+        // Then, perform the fixpoint iteration (here it's pretty verbose)
         do {
             std::cout << "===================Iteration " << it_count++ << "===================" << std::endl;
             copy_locations();
@@ -109,15 +121,21 @@ public:
             std::cout << "|CHECKING STABILITY|====================" << std::endl;
         } while (!is_stable());
 
+        // Finally, evaluate all the postconditions
         should_evaluate_postcondition = true;
         std::cout << "|EVALUATING POSTCONDITIONS|===================" << std::endl;
         evaluate_postconditions();
         std::cout << "===================COMPLETED===================" << std::endl;
-
+        std::cout << "Fixpoint iterations: " << it_count << std::endl;
 
     }
 
 private:
+
+    /**
+     * @brief Performs a deep copy of the locations
+     * 
+     */
     void copy_locations()
     {
         m_old_locations.clear();
@@ -129,6 +147,12 @@ private:
         }
     }
 
+    /**
+     * @brief Performs a deep copy of a single location
+     * 
+     * @param src 
+     * @return std::unique_ptr<Location<T>> 
+     */
     std::unique_ptr<Location<T>> copy_location(std::unique_ptr<Location<T>>& src)
     {
         // copy the internal
@@ -138,6 +162,12 @@ private:
         return copy;
     }
 
+    /**
+     * @brief Checks if a location is stable, that is, if the store of the current and previous iteration are the same
+     * 
+     * @return true 
+     * @return false 
+     */
     bool is_stable()
     {
         for (std::size_t i = 0; i < m_locations.size(); ++i)
@@ -157,12 +187,16 @@ private:
         return true;
     }
 
+    /**
+     * @brief Constructs the equational system from the AST
+     * 
+     */
     void build_equational_system()
     {
 
         std::cout << "|VARIABLES AND PRECONDITIONS|========" << std::endl;
 
-        // Get the variable declarations
+        // First, we get all the variables
         assert(m_ast.children[0].type == NodeType::DECLARATION);
         auto code_blocks = m_ast.children;
 
@@ -184,7 +218,7 @@ private:
         assert(code_block.type == NodeType::SEQUENCE && "Expected a sequence block");
         code_blocks = code_block.children;
 
-        // Get all the preconditions
+        // Then, we register all the preconditions
         std::cout << "[INFO] Introducting preconditions" << std::endl;
         auto prec_count = 0;
         while(code_blocks[prec_count].type == NodeType::PRE_CON)
@@ -197,6 +231,7 @@ private:
         }
         std::cout << "[INFO] Added " << prec_count << " preconditions" << std::endl;
 
+        // Finally, we construct the locations by traversing the AST
         std::cout << "|CONSTRUCTING LOCATIONS|==============" << std::endl;  
         for (int i = prec_count; i < code_blocks.size(); i++)
         {
@@ -205,12 +240,25 @@ private:
         }
     }
 
+    /**
+     * @brief Manages specific AST blocks during the construction of the equational system
+     * 
+     * @param block 
+     * @param fallback_location 
+     */
     void manage_block(ASTNode& block, std::shared_ptr<Location<T>> fallback_location = nullptr)
     {
         switch(block.type)
         {
+
             case NodeType::ASSIGNMENT:
             {
+                /**
+                * An assignment block is a block that assigns a value to a variable. We introduce two 
+                * stores, one before and one after the assignment. The operation evaluates the expression.
+                * 
+                */
+                
                 std::cout << "[INFO] Assignment block" << std::endl;
                 auto assignment_loc = std::make_unique<AssignmentLocation<T>>();
 
@@ -250,6 +298,13 @@ private:
             }
             case NodeType::POST_CON:
             {
+                /**
+                 * A postcondition location is not directly considered by the equational semantics, but is extremely well suited
+                 * in this situation. We introduce a location with a single store as we don't perform any modification of the variables.
+                 * The evaluation of the postconsition, embedded in the operation, is executed only after the fixpoint iteration
+                 * terminates.
+                 */
+
                 std::cout << "[INFO] Postcondition block" << std::endl;
                 auto postcondition_loc = std::make_unique<PostConditionLocation<T>>();
 
@@ -301,6 +356,15 @@ private:
             }
             case NodeType::IFELSE:
             {
+
+                /**
+                 * In the case of the if-else code block we separate the logic in two phases: the header of the if-else
+                 * block with its body, and the the termination of the if-else block. The header evaluates the condition
+                 * and shapes the stores that are passed to the main body and else body during evaluation. The termination
+                 * location is an artifact used to finalize the analysis of the if-statement, by merging information from the 
+                 * two bodies of the if case.
+                 * 
+                 */
                 std::cout << "[INFO] If-else block" << std::endl;
                 auto ifelse_loc = std::make_unique<IfElseLocation<T>>();
 
@@ -476,7 +540,15 @@ private:
             }
             case NodeType::WHILELOOP:
             {
-
+                /**
+                 * In the case of a while loop we subdivide its analysis in three parts: the header, the body and the termination of the
+                 * loop.
+                 * 
+                 * The header evaluates the condition and restricts the store to the body of the while loop. The body of the while loop
+                 * is analyzed recursively. The termination location is an artifact used to finalize the analysis of the while loop, 
+                 * extracting the final store of the while loop (when the condition on top is not satisfied).
+                 * 
+                 */
                 auto while_loc = std::make_unique<WhileLocation<T>>();
 
                 while_loc->m_store_before_condition = std::make_shared<IntervalStore<T>>();
@@ -515,9 +587,21 @@ private:
                         while_body_store.joinAll(feedback_store);
                         m_final_while_body_stores_queue.pop();
                     }
-                    auto while_body_store_2 = apply_command_to_store(while_body_store, var, rhs_interval, op);
 
-                    ptr->m_store_body = std::make_shared<IntervalStore<T>>(while_body_store_2);
+                    auto while_body_store_restricted = apply_command_to_store(while_body_store, var, rhs_interval, op);
+                    if (should_perform_widening)
+                    {   
+                        auto widened_store = widen(store, while_body_store, var);
+                        while_body_store_restricted = widened_store;
+                        std::cout << "Performing widening" << std::endl;
+                        while_body_store_restricted = apply_command_to_store(widened_store, var, rhs_interval, op);
+                        std::cout << "Widened store" << std::endl;
+                        widened_store.print();
+                    } 
+
+
+                    ptr->m_store_body = std::make_shared<IntervalStore<T>>(while_body_store_restricted);
+                    std::cout << "Applying condition to store" << std::endl;
                     ptr->m_store_body->print();
                     m_while_body_stores_queue.push(ptr->m_store_body);
             
@@ -591,6 +675,12 @@ private:
         }
     }
 
+    /**
+     * @brief Extracts the complementary logic operation of a given operation
+     * 
+     * @param op 
+     * @return LogicOp 
+     */
     LogicOp extract_complementary_op(LogicOp op)
     {
         std::cout << "Extracting complementary op of " << op << std::endl;
@@ -628,6 +718,13 @@ private:
         }
     }
 
+    /**
+     * @brief Evaluates the expression by recursively traversing the AST
+     * 
+     * @param block 
+     * @param store 
+     * @return Interval<T> 
+     */
     Interval<T> evaluate_expression(ASTNode& block, IntervalStore<T>& store)
     {
         if (block.type == NodeType::INTEGER)
@@ -681,6 +778,55 @@ private:
         }    
     }
 
+    /**
+     * @brief Performs the widening operation on the store
+     * 
+     * @param store 
+     * @param new_store 
+     * @param var 
+     * @return IntervalStore<T> 
+     */
+    IntervalStore<T> widen(IntervalStore<T>& store, IntervalStore<T>& new_store, std::string& var)
+    {
+        IntervalStore<T> widened_store;
+        widened_store = new_store;
+
+        auto old_interval = store.get(var);
+        auto reference_interval = new_store.get(var);
+
+
+        auto new_lb = reference_interval.lb();
+        auto new_ub = reference_interval.ub();
+
+        auto old_lb = old_interval.lb();
+        auto old_ub = old_interval.ub();
+
+        if (old_lb > new_lb)
+        {
+            new_lb = min_T;
+        }
+        else
+        {
+            new_lb = old_lb;
+        }
+
+        if (old_ub < new_ub)
+        {
+            new_ub = max_T;
+        }
+        else
+        {
+            new_ub = old_ub;
+        }
+
+        widened_store.set(var, {new_lb, new_ub});
+        return widened_store;
+    }
+
+    /**
+     * @brief Applies a specific command to the store (command which is not an assignment)
+     * 
+     */
     IntervalStore<T> apply_command_to_store(IntervalStore<T> store, std::string& var, Interval<T>& interval, LogicOp& op)
     {
         switch(op)
@@ -801,9 +947,12 @@ private:
         return store;
     }
 
+    /**
+     * @brief Evaluates the logic opeation between two intervals
+     * 
+     */
     bool evaluate_logic_operation(Interval<T> left, Interval<T> right, LogicOp op)
     {
-        // TODO: Verify that this is correct
         switch(op)
         {
             case LogicOp::LEQ:
@@ -838,6 +987,10 @@ private:
         }
     }
 
+    /**
+     * @brief Prints the equational system
+     * 
+     */
     void print_equational_system()
     {
         std::cout << "|PRECONDITIONS|========================" << std::endl;   
@@ -848,6 +1001,11 @@ private:
         std::cout << "=======================================" << std::endl;
     }
 
+    /**
+     * @brief Adds a new variable to the precondition store
+     * 
+     * @param node 
+     */
     void add_variable(const ASTNode& node)
     {
         auto var_name = std::get<std::string>(node.value);
@@ -856,6 +1014,11 @@ private:
         m_variables.push_back(var_name);
     }
     
+    /**
+     * @brief Adds a new precondition to the precondition store
+     * 
+     * @param node 
+     */
     void add_precondition(const ASTNode& node)
     {
         auto op = std::get<std::string>(node.value);
@@ -917,11 +1080,11 @@ private:
         }
     }
 
-    void construct_locations(const ASTNode& node)
-    {
-        
-    }
-
+    /**
+     * @brief Solves a single iteration of the fixpoint by evaluating all the locations.
+     * Here, stores are linked to each other and passed to the locations. Operations are then performed
+     * 
+     */
     void solve_system()
     {
         last_interval_store = std::make_shared<IntervalStore<T>>(m_precondition_store);
@@ -1009,6 +1172,12 @@ private:
         }
     }
 
+    /**
+     * @brief Identifies the dynamic type of location
+     * 
+     * @param loc 
+     * @return LocationType 
+     */
     LocationType identify_type(std::unique_ptr<Location<T>>& loc)
     {
         if (dynamic_cast<AssignmentLocation<T>*>(loc.get()))
@@ -1042,6 +1211,10 @@ private:
         }
     }
 
+    /**
+     * @brief Evaluates the postconditions
+     * 
+     */
     void evaluate_postconditions()
     {
         for (auto& loc : m_locations)

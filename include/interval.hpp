@@ -6,12 +6,11 @@
 template <typename T>
 class Interval{
 private:
-
-
     static const T min_T = std::numeric_limits<T>::min();
     static const T max_T = std::numeric_limits<T>::max();
 
 public: 
+
     bool m_is_empty = false;
     T m_lb;
     T m_ub;

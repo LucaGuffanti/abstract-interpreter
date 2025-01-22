@@ -7,6 +7,12 @@
 
 #include "interval.hpp"
 
+/**
+ * @brief The IntervalStore class represents a store of intervals for variables,
+ * together with the some operations that can be performed on the store.
+ * 
+ * @tparam T 
+ */
 template <typename T>
 class IntervalStore
 {
